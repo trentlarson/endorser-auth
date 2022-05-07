@@ -3,7 +3,7 @@
 
    to install/build: yarn add @veramo/did-jwt bent
 
-   to test: uncomment the last line and run: node index.js
+   to test: uncomment the last line (and maybe change host) and run: node index.js
 
    to package: zip -rq function.zip index.js node_modules
 
@@ -37,7 +37,7 @@ exports.handler = async (input) => {
   const signer = didJwt.SimpleSigner(privateKeyHex)
   //console.log('got signer')
 
-  if (!checkJwt(input.jwt, didJwt)) {
+  if (input.jwt && !checkJwt(input.jwt, didJwt)) {
     return false
   }
 
