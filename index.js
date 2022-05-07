@@ -1,13 +1,29 @@
 
 /**
 
-   to install: yarn add @veramo/did-jwt bent
+   to install/build: yarn add @veramo/did-jwt bent
 
    to test: uncomment the last line and run: node index.js
 
    to package: zip -rq function.zip index.js node_modules
 
  **/
+
+const checkJwt = async (jwt, didJwtLib) => {
+
+  const {payload, header, signature, data} = didJwtLib.decodeJWT(jwt)
+  if (!payload || !header) {
+    console.log('Unverified JWT')
+    return false
+  } else if (payload.exp < Math.floor(new Date().getTime() / 1000) ) {
+    console.log('JWT has expired.')
+    return false
+  } else if (header.typ === 'none') {
+    console.log('Insecure JWT type')
+    return false
+  }
+  return true
+}
 
 exports.handler = async (input) => {
 
@@ -20,6 +36,10 @@ exports.handler = async (input) => {
   const didJwt = require('did-jwt')
   const signer = didJwt.SimpleSigner(privateKeyHex)
   //console.log('got signer')
+
+  if (!checkJwt(input.jwt, didJwt)) {
+    return false
+  }
 
   const nowEpoch = Math.floor(Date.now() / 1000)
   const endEpoch = nowEpoch + 60
@@ -47,4 +67,4 @@ exports.handler = async (input) => {
 }
 
 // Locally test with this:
-exports.handler({ claimId: "01G2BKD9VD9JRYS92X7D8D3CZB" })
+//exports.handler({ claimId: "01G2BKD9VD9JRYS92X7D8D3CZB", jwt: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NksifQ.eyJpYXQiOjE2NTE5NDQyODQsImV4cCI6MTY1MjAwNDI4NCwiaXNzIjoiZGlkOmV0aHI6MHgwMDBFZTU2NTRiOTc0MmY2RmUxOGVhOTcwZTMyYjk3ZWUyMjQ3QjUxIn0.43EpuZZgzKGySW1Le0d7cyP_n7CvDVk7mlz1MGWAOnDHJYLdFfpNymqpcr3E5MrIX12QRzIZQ5kH95bihqJ1ZA' })
