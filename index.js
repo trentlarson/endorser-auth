@@ -9,11 +9,11 @@
 
    to package: zip -rq function.zip index.js node_modules
 
- **/
+**/
 
 /**
- @return iss from JWT if it's valid and hasn't expired and is within the last minute; otherwise null
- **/
+   @return iss from JWT if it's valid and hasn't expired and is within the last minute; otherwise null
+**/
 const checkJwt = (jwt, didJwtLib) => {
 
   const {payload, header, signature, data} = didJwtLib.decodeJWT(jwt)
