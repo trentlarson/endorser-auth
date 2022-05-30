@@ -105,4 +105,4 @@ exports.handler = async (input) => {
 
 // Locally test with a confirmation, eg. 0x3 claim confirmed by 0x6 seen by 0x4
 //exports.handler({ claimId: "01G2V3BA7PSYKB12P1BCQEJSC0", jwt: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NksifQ.eyJpYXQiOjE2NTE5NTQwNTYsImV4cCI6NDgwNTU1NDA1NiwiaXNzIjoiZGlkOmV0aHI6MHgwMDBFZTU2NTRiOTc0MmY2RmUxOGVhOTcwZTMyYjk3ZWUyMjQ3QjUxIn0.sPSlVD71T1cB9dCv68P-EsLULourDsT8wvjHAGCtuSVLvUUhOZDeYgkoHbhVa3nFce6sVF6vmFNvmSZlc9sgxg' })
-exports.handler({ claimId: "01G2V3BA7PSYKB12P1BCQEJSC0", did: 'did:ethr:0x3334FE5a696151dc4D0D03Ff3FbAa2B60568E06a' })
+//exports.handler({ claimId: "01G2V3BA7PSYKB12P1BCQEJSC0", did: 'did:ethr:0x3334FE5a696151dc4D0D03Ff3FbAa2B60568E06a' })
