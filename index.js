@@ -1,11 +1,14 @@
 
 /**
 
-   to install/build: yarn add @veramo/did-jwt bent
+   to install/build (requires node 14+):
+   - `yarn add @veramo/did-jwt bent`
 
-   sample env vars: OWNER_DID=did:ethr:0x444D276f087158212d9aA4B6c85C28b9F7994AAC OWNER_PRIVATE_KEY_HEX=e7aea73ba5b9b45136bc1bf62b7ecedcd74ae4ec87d0378aeea551c1c14b3fc5 CONFIRMER_DID=did:ethr:0x666fb9f5AE22cB932493a4FFF1537c2420E0a4D3 ORG_NAME='Cottonwood Cryptography Club' ORG_ROLE_NAME='President'
+   sample env vars: ownerDid=did:ethr:0x444D276f087158212d9aA4B6c85C28b9F7994AAC ownerPrivateKeyHex=e7aea73ba5b9b45136bc1bf62b7ecedcd74ae4ec87d0378aeea551c1c14b3fc5 confirmerDid=did:ethr:0x666fb9f5AE22cB932493a4FFF1537c2420E0a4D3 orgName='Cottonwood Cryptography Club' orgRoleName='President'
 
-   to test: uncomment the last line (and maybe change host), add sample env vars, and run: node index.js
+   to test:
+   - `yarn add ethr-did-resolver@0.2.0 uport-credentials@1.1.7 @veramo/did-jwt@^3.1.0 --dev`
+   - `node test.js`
 
    to package: zip -rq function.zip index.js node_modules
 
@@ -34,34 +37,43 @@ const checkJwt = (jwt, didJwtLib) => {
   return payload.iss
 }
 
-exports.handler = async (input) => {
+/**
+   input contains a single 'vp' property containing a Verifiable Presentation
 
+   config contains:
+     confirmerDid
+     orgName
+     orgRoleName
+     ownerDid
+     ownerPrivateKeyHex
+   ... though they can be set as environment variables.
+
+   result has details about the claim from Endorser.ch if authN & authZ pass; otherwise, false
+**/
+exports.auth = async (input, config) => {
+
+  const { vp } = input
   console.log('Got input', input)
+  //console.log('Got config', config)
 
-  const confirmerDid = process.env.CONFIRMER_DID // DID of authority whose confirmation means to proceed
-  const orgName = process.env.ORG_NAME
-  const orgRoleName = process.env.ORG_ROLE_NAME
-  const ownerDid = process.env.OWNER_DID // DID of this agent's user
-  const ownerPrivateKeyHex = process.env.OWNER_PRIVATE_KEY_HEX // private key of this agent's user
+  config = config || {}
+  const confirmerDid = config.confirmerDid || process.env.confirmerDid // DID of authority (whose confirmation is required)
+  const orgName = config.orgName || process.env.orgName
+  const orgRoleName = config.orgRoleName || process.env.orgRoleName
+  const ownerDid = config.ownerDid || process.env.ownerDid // DID of this agent's user
+  const ownerPrivateKeyHex = config.ownerPrivateKeyHex || process.env.ownerPrivateKeyHex // private key of this agent's user
 
   const didJwt = require('did-jwt')
   const signer = didJwt.SimpleSigner(ownerPrivateKeyHex)
   //console.log('Got signer.')
 
-  let checkDid = input.did
-  if (input.jwt) {
-    checkDid = checkJwt(input.jwt, didJwt)
-  }
-  if (!checkDid) {
-    console.log('JWT did not check out.')
-    return false
-  }
+  const claimId = vp.verifiableCredential[0].id.substring(vp.verifiableCredential[0].id.lastIndexOf('/'))
 
   const nowEpoch = Math.floor(Date.now() / 1000)
   const endEpoch = nowEpoch + 60
   const tokenPayload = { exp: endEpoch, iat: nowEpoch, iss: ownerDid }
   const accessJwt = await didJwt.createJWT(tokenPayload, { issuer: ownerDid, signer })
-  //console.log('Created access jwt', accessJwt)
+  console.log('Created access jwt', accessJwt)
 
   //const host = 'https://endorser.ch:3000'
   //const host = 'https://test.endorser.ch:8000'
@@ -74,9 +86,9 @@ exports.handler = async (input) => {
   const getJson = bent('json', options)
 
   // first check that the claim is as expected
-  const claimUrl = host + '/api/claim/' + input.claimId
+  const claimUrl = host + '/api/claim/' + claimId
   const claimResponse = await getJson(claimUrl)
-  console.log('Got claim response', claimResponse)
+  console.log('Got claim response', JSON.stringify(claimResponse, null, 2))
   const claim = claimResponse.claim
   // (alternative approach is to pull org_role_claim record from the server)
   const start = claim.member.startDate && new Date(claim.member.startDate)
@@ -84,17 +96,18 @@ exports.handler = async (input) => {
   if (claim['@type'] != 'Organization'
       || claim.name != orgName
       || claim.member['@type'] != 'OrganizationRole'
-      || claim.member.member.identifier != checkDid
+      || claim.member.member.identifier != vp.holder
       || claim.member.roleName != orgRoleName
-      || (claim.startDate && new Date() < started)
-      || (claim.endDate && ended < new Date())) {
+      || (claim.member.startDate && new Date() < start)
+      || (claim.member.endDate && ended < new Date())) {
     // this claim isn't a valid organizational claim
-    console.log('Claim did not match criteria.')
+    console.log('This claim did not match criteria:')
+    console.dir(claim)
     return false
   }
 
   // now check confirmations of that claim
-  const confirmUrl = host + '/api/report/issuersWhoClaimedOrConfirmed?claimId=' + input.claimId
+  const confirmUrl = host + '/api/report/issuersWhoClaimedOrConfirmed?claimId=' + claimId
   const confirm = await getJson(confirmUrl)
   //console.log('Got confirmation', confirm)
   const result = confirm.result.indexOf(confirmerDid) > -1
@@ -102,7 +115,3 @@ exports.handler = async (input) => {
   console.log('Giving result', result)
   return result;
 }
-
-// Locally test with a confirmation, eg. 0x3 claim confirmed by 0x6 seen by 0x4
-//exports.handler({ claimId: "01G2V3BA7PSYKB12P1BCQEJSC0", jwt: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NksifQ.eyJpYXQiOjE2NTE5NTQwNTYsImV4cCI6NDgwNTU1NDA1NiwiaXNzIjoiZGlkOmV0aHI6MHgwMDBFZTU2NTRiOTc0MmY2RmUxOGVhOTcwZTMyYjk3ZWUyMjQ3QjUxIn0.sPSlVD71T1cB9dCv68P-EsLULourDsT8wvjHAGCtuSVLvUUhOZDeYgkoHbhVa3nFce6sVF6vmFNvmSZlc9sgxg' })
-//exports.handler({ claimId: "01G2V3BA7PSYKB12P1BCQEJSC0", did: 'did:ethr:0x3334FE5a696151dc4D0D03Ff3FbAa2B60568E06a' })
