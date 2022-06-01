@@ -102,15 +102,15 @@ exports.auth = async (input, config) => {
       || (claim.member.endDate && ended < new Date())) {
     // this claim isn't a valid organizational claim
     console.log('This claim did not match criteria:')
-    console.dir(claim)
+    console.dir(claim, { depth: 9 })
     return false
   }
 
   // now check confirmations of that claim
   const confirmUrl = host + '/api/report/issuersWhoClaimedOrConfirmed?claimId=' + claimId
-  const confirm = await getJson(confirmUrl)
-  //console.log('Got confirmation', confirm)
-  const result = confirm.result.indexOf(confirmerDid) > -1
+  const confirms = await getJson(confirmUrl)
+  //console.log('Got confirmations', confirms)
+  const result = confirms.result.indexOf(confirmerDid) > -1
 
   console.log('Giving result', result)
   return result;

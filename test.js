@@ -6,12 +6,14 @@
    Some of this is copied in the endorser-ch repo (eg. test/util.js).
 **/
 
+const ENDORSER_SERVER='http://localhost:3000'
+
 const auth = require('./index').auth
 const { Credentials } = require('uport-credentials')
 
 const config = {
-  ownerDid: 'did:ethr:0x444D276f087158212d9aA4B6c85C28b9F7994AAC',
-  ownerPrivateKeyHex: 'e7aea73ba5b9b45136bc1bf62b7ecedcd74ae4ec87d0378aeea551c1c14b3fc5',
+  ownerDid: 'did:ethr:0x2224EA786b7C2A8E5782E16020F2f415Dce6bFa7',
+  ownerPrivateKeyHex: '1c9686218830e75f4c032f42005a99b424e820c5094c721b17e5ccb253f001e4',
   confirmerDid: 'did:ethr:0x666fb9f5AE22cB932493a4FFF1537c2420E0a4D3',
   orgName: 'Cottonwood Cryptography Club',
   orgRoleName: 'President',
@@ -94,8 +96,34 @@ const NOW_EPOCH = Math.floor(new Date().getTime() / 1000)
 const TOMORROW_EPOCH = NOW_EPOCH + (24 * 60 * 60)
 const pushTokenProms = CREDENTIALS.map((c) => c.createVerification({ exp: TOMORROW_EPOCH }))
 
+const bent = require('bent')
+const assert = require('assert').strict
+
+const twoWaySees2 = async (jwts, id) => {
+  let post, result
+
+  post = bent(ENDORSER_SERVER, 'POST', 'json', { 'Uport-Push-Token': jwts[2] })
+  result = await post('/api/report/canSeeMe', { did: CREDS[id].did })
+  assert.ok(result.success, 'Failed to set visibility where ' + id + ' can see 2.')
+
+  post = bent(ENDORSER_SERVER, 'POST', 'json', { 'Uport-Push-Token': jwts[id] })
+  result = await post('/api/report/canSeeMe', { did: CREDS[2].did })
+  assert.ok(result.success, 'Failed to set visibility where 2 can see ' + id + '.')
+}
+
 Promise.all(pushTokenProms)
-  .then((jwts) => {
+  .then(async (jwts) => {
     console.log("Created push tokens", jwts)
+
+    // set visibility such that everyone can see the Secretary
+    await Promise.all([
+      twoWaySees2(jwts, 3),
+      twoWaySees2(jwts, 4),
+      twoWaySees2(jwts, 5),
+      twoWaySees2(jwts, 6),
+      twoWaySees2(jwts, 7),
+      twoWaySees2(jwts, 8),
+      twoWaySees2(jwts, 9)
+    ])
     auth({vp}, config)
   })
