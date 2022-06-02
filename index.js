@@ -53,8 +53,8 @@ const checkJwt = (jwt, didJwtLib) => {
 exports.auth = async (input, config) => {
 
   const { vp } = input
-  console.log('Got input', input)
-  //console.log('Got config', config)
+  //console.log('Got input:', JSON.stringify(input, null, 2))
+  //console.log('Got config:', config)
 
   config = config || {}
   const confirmerDid = config.confirmerDid || process.env.confirmerDid // DID of authority (whose confirmation is required)
@@ -67,13 +67,13 @@ exports.auth = async (input, config) => {
   const signer = didJwt.SimpleSigner(ownerPrivateKeyHex)
   //console.log('Got signer.')
 
-  const claimId = vp.verifiableCredential[0].id.substring(vp.verifiableCredential[0].id.lastIndexOf('/'))
+  const claimId = vp.verifiableCredential[0].id.substring(vp.verifiableCredential[0].id.lastIndexOf('/') + 1)
 
   const nowEpoch = Math.floor(Date.now() / 1000)
   const endEpoch = nowEpoch + 60
   const tokenPayload = { exp: endEpoch, iat: nowEpoch, iss: ownerDid }
   const accessJwt = await didJwt.createJWT(tokenPayload, { issuer: ownerDid, signer })
-  console.log('Created access jwt', accessJwt)
+  //console.log('Created access jwt', accessJwt)
 
   //const host = 'https://endorser.ch:3000'
   //const host = 'https://test.endorser.ch:8000'
@@ -88,7 +88,7 @@ exports.auth = async (input, config) => {
   // first check that the claim is as expected
   const claimUrl = host + '/api/claim/' + claimId
   const claimResponse = await getJson(claimUrl)
-  console.log('Got claim response', JSON.stringify(claimResponse, null, 2))
+  //console.log('Got claim response:', JSON.stringify(claimResponse, null, 2))
   const claim = claimResponse.claim
   // (alternative approach is to pull org_role_claim record from the server)
   const start = claim.member.startDate && new Date(claim.member.startDate)
@@ -101,17 +101,16 @@ exports.auth = async (input, config) => {
       || (claim.member.startDate && new Date() < start)
       || (claim.member.endDate && ended < new Date())) {
     // this claim isn't a valid organizational claim
-    console.log('This claim did not match criteria:')
-    console.dir(claim, { depth: 9 })
+    console.log('This claim did not match criteria:', JSON.stringify(claim, null, 2))
     return false
   }
 
   // now check confirmations of that claim
   const confirmUrl = host + '/api/report/issuersWhoClaimedOrConfirmed?claimId=' + claimId
   const confirms = await getJson(confirmUrl)
-  //console.log('Got confirmations', confirms)
+  //console.log('Got confirmations:', confirms)
   const result = confirms.result.indexOf(confirmerDid) > -1
 
-  console.log('Giving result', result)
+  //console.log('Giving result:', result)
   return result;
 }

@@ -113,7 +113,7 @@ const twoWaySees2 = async (jwts, id) => {
 
 Promise.all(pushTokenProms)
   .then(async (jwts) => {
-    console.log("Created push tokens", jwts)
+    //console.log("Created push tokens", jwts)
 
     // set visibility such that everyone can see the Secretary
     await Promise.all([
@@ -125,5 +125,5 @@ Promise.all(pushTokenProms)
       twoWaySees2(jwts, 8),
       twoWaySees2(jwts, 9)
     ])
-    auth({vp}, config)
+    assert.ok(auth({vp}, config))
   })
