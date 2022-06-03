@@ -64,9 +64,20 @@ exports.auth = async (input, config) => {
   const ownerPrivateKeyHex = config.ownerPrivateKeyHex || process.env.ownerPrivateKeyHex // private key of this agent's user
 
   const didJwt = require('did-jwt')
+
+  // check signatures for validity
+  await require("ethr-did-resolver").default()
+  const resolver = await require('did-resolver')
+  try {
+    const vpVer = await didJwt.verifyJWT(vp.proof.jwt, { resolver: { resolve: resolver.default } })
+    const vcVer = await didJwt.verifyJWT(vp.verifiableCredential[0].proof.jwt, { resolver: { resolve: resolver.default } })
+  } catch (e) {
+    //console.log('Failed with error:', e)
+    return false
+  }
+
   const signer = didJwt.SimpleSigner(ownerPrivateKeyHex)
   //console.log('Got signer.')
-
   const claimId = vp.verifiableCredential[0].id.substring(vp.verifiableCredential[0].id.lastIndexOf('/') + 1)
 
   const nowEpoch = Math.floor(Date.now() / 1000)
@@ -85,7 +96,7 @@ exports.auth = async (input, config) => {
   }
   const getJson = bent('json', options)
 
-  // first check that the claim is as expected
+  // check that the claim is as expected
   const claimUrl = host + '/api/claim/' + claimId
   const claimResponse = await getJson(claimUrl)
   //console.log('Got claim response:', JSON.stringify(claimResponse, null, 2))
@@ -101,11 +112,11 @@ exports.auth = async (input, config) => {
       || (claim.member.startDate && new Date() < start)
       || (claim.member.endDate && ended < new Date())) {
     // this claim isn't a valid organizational claim
-    console.log('This claim did not match criteria:', JSON.stringify(claim, null, 2))
+    //console.log('For holder ' + vp.holder + ' this claim did not match criteria:', JSON.stringify(claim, null, 2))
     return false
   }
 
-  // now check confirmations of that claim
+  // check confirmations of that claim
   const confirmUrl = host + '/api/report/issuersWhoClaimedOrConfirmed?claimId=' + claimId
   const confirms = await getJson(confirmUrl)
   //console.log('Got confirmations:', confirms)

@@ -125,5 +125,22 @@ Promise.all(pushTokenProms)
       twoWaySees2(jwts, 8),
       twoWaySees2(jwts, 9)
     ])
-    assert.ok(auth({vp}, config))
+
+    assert.ok(await auth({vp}, config), 'A good VP failed to match.')
+
+    const prevHolder = vp.holder
+    vp.holder = CREDS[4].did
+    assert.ok(! await auth({vp}, config), 'An incorrect holder matched.')
+    vp.holder = prevHolder
+
+    const prevVpJwt = vp.proof.jwt
+    vp.proof.jwt = 'eyJhbGciOiJFUzI1NksiLCJ0eXAiOiJKV1QifQ.eyJ2cCI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVQcmVzZW50YXRpb24iXSwidmVyaWZpYWJsZUNyZWRlbnRpYWwiOlsiZXlKaGJHY2lPaUpGVXpJMU5rc2lMQ0owZVhBaU9pSktWMVFpZlEuZXlKMll5STZleUpqY21Wa1pXNTBhV0ZzVTNWaWFtVmpkQ0k2ZXlKQVkyOXVkR1Y0ZENJNkltaDBkSEJ6T2k4dmMyTm9aVzFoTG05eVp5SXNJa0IwZVhCbElqb2lUM0puWVc1cGVtRjBhVzl1SWl3aWJXVnRZbVZ5SWpwN0lrQjBlWEJsSWpvaVQzSm5ZVzVwZW1GMGFXOXVVbTlzWlNJc0ltMWxiV0psY2lJNmV5SkFkSGx3WlNJNklsQmxjbk52YmlJc0ltbGtaVzUwYVdacFpYSWlPaUprYVdRNlpYUm9jam93ZURNek16UkdSVFZoTmprMk1UVXhaR00wUkRCRU1ETkdaak5HWWtGaE1rSTJNRFUyT0VVd05tRWlmU3dpY205c1pVNWhiV1VpT2lKUWNtVnphV1JsYm5RaUxDSnpkR0Z5ZEVSaGRHVWlPaUl5TURFNUxUQTBMVEF4SW4wc0ltNWhiV1VpT2lKRGIzUjBiMjUzYjI5a0lFTnllWEIwYjJkeVlYQm9lU0JEYkhWaUluMHNJa0JqYjI1MFpYaDBJanBiSW1oMGRIQnpPaTh2ZDNkM0xuY3pMbTl5Wnk4eU1ERTRMMk55WldSbGJuUnBZV3h6TDNZeElsMHNJblI1Y0dVaU9sc2lWbVZ5YVdacFlXSnNaVU55WldSbGJuUnBZV3dpWFgwc0ltcDBhU0k2SW1oMGRIQTZMeTh4TWpjdU1DNHdMakU2TXpBd01DOWhjR2t2WTJ4aGFXMHZNREZITWxZelFrRTNVRk5aUzBJeE1sQXhRa05SUlVwVFF6QWlMQ0p1WW1ZaU9qRTJOVE01TkRJM05ETXNJbWx6Y3lJNkltUnBaRHBsZEdoeU9qQjRNek16TkVaRk5XRTJPVFl4TlRGa1l6UkVNRVF3TTBabU0wWmlRV0V5UWpZd05UWTRSVEEyWVNKOS5OLUtPd0RaeUVkYWtiWnlYRlBHUUQ1UTFSakRmcnF1a3NaM1kxY2pJTk5vNFRwQVFmT2luSVFqZHBZbFBWRjBCcWQxNGp5ZHZDQWJ5dEhvT3cyQkNKdyJdfSwibmJmIjoxNjUzOTQyNzQzLCJpc3MiOiJkaWQ6ZXRocjoweDMzMzRGRTVhNjk2MTUxZGM0RDBEMDNGZjNGYkFhMkI2MDU2OEUwNmEifQ.5x8voAZL3TuhSjb-zoDClua3fFXRPsB1Q-ypT-xWV9MjMkk2M5mmkU2sUJkFl8LIoK-7RuS0SkA2ZiW1ZdlHjg' // changed second-to-last character from i to j
+    assert.ok(! await auth({vp}, config), 'An incorrect VP signature matched.')
+    vp.proof.jwt = prevVpJwt
+
+    const prevVcJwt = vp.verifiableCredential[0].proof.jwt
+    vp.verifiableCredential[0].proof.jwt = 'eyJhbGciOiJFUzI1NksiLCJ0eXAiOiJKV1QifQ.eyJ2YyI6eyJjcmVkZW50aWFsU3ViamVjdCI6eyJAY29udGV4dCI6Imh0dHBzOi8vc2NoZW1hLm9yZyIsIkB0eXBlIjoiT3JnYW5pemF0aW9uIiwibWVtYmVyIjp7IkB0eXBlIjoiT3JnYW5pemF0aW9uUm9sZSIsIm1lbWJlciI6eyJAdHlwZSI6IlBlcnNvbiIsImlkZW50aWZpZXIiOiJkaWQ6ZXRocjoweDMzMzRGRTVhNjk2MTUxZGM0RDBEMDNGZjNGYkFhMkI2MDU2OEUwNmEifSwicm9sZU5hbWUiOiJQcmVzaWRlbnQiLCJzdGFydERhdGUiOiIyMDE5LTA0LTAxIn0sIm5hbWUiOiJDb3R0b253b29kIENyeXB0b2dyYXBoeSBDbHViIn0sIkBjb250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiXX0sImp0aSI6Imh0dHA6Ly8xMjcuMC4wLjE6MzAwMC9hcGkvY2xhaW0vMDFHMlYzQkE3UFNZS0IxMlAxQkNRRUpTQzAiLCJuYmYiOjE2NTM5NDI3NDMsImlzcyI6ImRpZDpldGhyOjB4MzMzNEZFNWE2OTYxNTFkYzREMEQwM0ZmM0ZiQWEyQjYwNTY4RTA2YSJ9.N-KOwDZyEdakbZyXFPGQD5Q1RjDfrquksZ3Y1cjINNo4TpAQfOinIQjdpYlPVF0Bqd14jydvCAbytHoOw2BCKw' // changed second-to-last character from J to K
+    assert.ok(! await auth({vp}, config), 'An incorrect VC signature matched.')
+    vp.verifiableCredential[0].proof.jwt = prevVcJwt
+
   })
