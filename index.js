@@ -15,7 +15,7 @@
 **/
 
 /**
-   @return iss from JWT if it's valid and hasn't expired and is within the last minute; otherwise null
+   @return payload from JWT string if it's valid and hasn't expired and is within the last minute; otherwise null
 **/
 const checkJwt = (jwt, didJwtLib) => {
 
@@ -24,31 +24,44 @@ const checkJwt = (jwt, didJwtLib) => {
   if (!payload || !header) {
     //console.log('Unverified JWT')
     return null
-  } else if (payload.exp < nowSeconds) {
+  }
+  if (payload.exp < nowSeconds) {
     //console.log('JWT has expired.')
     return null
-  } else if (payload.iat < nowSeconds - 60) {
+  }
+  if (payload.nbf > nowSeconds) {
     //console.log('JWT was issued over 60 seconds ago.')
     return null
-  } else if (header.typ === 'none') {
+  }
+  if (header.typ === 'none') {
     //console.log('JWT typ is insecure.')
     return null
   }
-  return payload.iss
+  return payload
 }
 
 /**
    input contains a single 'vp' property containing a Verifiable Presentation
 
    config contains:
+     // account who is trusted to confirm the claim
      confirmerDid
-     orgName
-     orgRoleName
-     ownerDid
-     ownerPrivateKeyHex
-   ... though they can be set as environment variables.
 
-   result has details about the claim from Endorser.ch if authN & authZ pass; otherwise, false
+     // name of organization in question
+     orgName
+
+     // name of role inside organization for access
+     orgRoleName
+
+     // owner is the account running this test, who should have access to see the people in the claims & confirmations
+     ownerDid
+
+     // key for the owner, used to access the claims
+     ownerPrivateKeyHex
+
+   config values can also be set as environment variables of the same name.
+
+   result returns the ID of the issuer if authN & authZ pass; otherwise, false
 **/
 exports.auth = async (input, config) => {
 
@@ -73,6 +86,30 @@ exports.auth = async (input, config) => {
     const vcVer = await didJwt.verifyJWT(vp.verifiableCredential[0].proof.jwt, { resolver: { resolve: resolver.default } })
   } catch (e) {
     //console.log('Failed with error:', e)
+    return false
+  }
+  const vpPayload = checkJwt(vp.proof.jwt, didJwt)
+  if (! vpPayload) {
+    //console.log('VP JWT check failed.')
+    return false
+  }
+  const vcPayload = checkJwt(vp.verifiableCredential[0].proof.jwt, didJwt)
+  if (! vcPayload) {
+    //console.log('VP JWT check failed.')
+    return false
+  }
+  if (vcPayload.iss != vp.holder){
+    //console.log('VC issuer is different from VP holder.')
+    return false
+  }
+  // the check after this depends on this check (such that there's either an exp or an iat)
+  if (! vcPayload.exp && ! vcPayload.iat) {
+    //console.log('VP did not have either an expiration (exp) time or issuance (iat) time.')
+    return false
+  }
+  const nowSeconds = Math.floor(new Date().getTime() / 1000)
+  if (vcPayload.iat < nowSeconds - 60) { // fails check if no iat (which must be OK since there must have been an exp)
+    //console.log('JWT was issued over 60 seconds ago.')
     return false
   }
 
@@ -102,8 +139,8 @@ exports.auth = async (input, config) => {
   //console.log('Got claim response:', JSON.stringify(claimResponse, null, 2))
   const claim = claimResponse.claim
   // (alternative approach is to pull org_role_claim record from the server)
-  const start = claim.startDate && new Date(claim.startDate)
-  const ended = claim.endDate && new Date(claim.endDate)
+  const start = claim.member && claim.member.startDate && new Date(claim.member.startDate)
+  const ended = claim.member && claim.member.endDate && new Date(claim.member.endDate)
   if (claim['@type'] != 'Organization'
       || claim.name != orgName
       || !claim.member
@@ -111,8 +148,8 @@ exports.auth = async (input, config) => {
       || !claim.member.member
       || claim.member.member.identifier != vp.holder
       || claim.member.roleName != orgRoleName
-      || (claim.startDate && new Date() < start)
-      || (claim.endDate && ended < new Date())) {
+      || (start && new Date() < start)
+      || (ended && ended < new Date())) {
     // this claim isn't a valid organizational claim
     //console.log('For holder ' + vp.holder + ' this claim did not match criteria:', JSON.stringify(claim, null, 2))
     return false
@@ -122,8 +159,11 @@ exports.auth = async (input, config) => {
   const confirmUrl = host + '/api/report/issuersWhoClaimedOrConfirmed?claimId=' + claimId
   const confirms = await getJson(confirmUrl)
   //console.log('Got confirmations:', confirms)
-  const result = confirms.result.indexOf(confirmerDid) > -1
+  if (confirms.result.indexOf(confirmerDid) == -1) {
+    //console.log('')
+    return false
+  }
 
-  //console.log('Giving result:', result)
-  return result;
+  //console.log('Giving result:', vp.holder)
+  return vp.holder
 }
