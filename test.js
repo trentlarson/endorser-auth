@@ -1,12 +1,17 @@
 /**
    Locally test with a confirmation, eg. 0x3 claim confirmed by 0x6 which can be seen by 0x4
 
-   This depends on a running endorser-ch server with data seeded by a local test run.
+   This depends on endorser-ch:
+   - create data in a local test run
+   - copy it to where the server looks for the DB
+   - get the ID for the AgreeAction where 0x6 confirms the claim by 0x3
+   - run the server
 
    Some of this is copied in the endorser-ch repo (eg. test/util.js).
 **/
 
 const ENDORSER_SERVER='http://localhost:3000'
+const TEST_CLAIM='01G4N155FNSYCQA8KVYVPTNETM'
 
 const auth = require('./index').auth
 const { Credentials } = require('uport-credentials')
@@ -39,7 +44,7 @@ const vp = {
       "issuer": {
         "id": "did:ethr:0x3334FE5a696151dc4D0D03Ff3FbAa2B60568E06a"
       },
-      "id": "http://127.0.0.1:3000/api/claim/01G2V3BA7PSYKB12P1BCQEJSC0",
+      "id": "http://127.0.0.1:3000/api/claim/" + TEST_CLAIM,
       "type": [
         "VerifiableCredential"
       ],
@@ -115,18 +120,23 @@ Promise.all(pushTokenProms)
   .then(async (jwts) => {
     //console.log("Created push tokens", jwts)
 
+    assert.ok(! await auth({vp}, config), 'VP matched even though the user should not be seen by 0x2.')
+
     // set visibility such that everyone can see the Secretary
     await Promise.all([
+      twoWaySees2(jwts, 6),
       twoWaySees2(jwts, 3),
+
+      /** The concept is that everyone can see 0x2, but these aren't necessary for this test.
       twoWaySees2(jwts, 4),
       twoWaySees2(jwts, 5),
-      twoWaySees2(jwts, 6),
       twoWaySees2(jwts, 7),
       twoWaySees2(jwts, 8),
       twoWaySees2(jwts, 9)
+      **/
     ])
 
-    assert.ok(await auth({vp}, config), 'A good VP failed to match.')
+    assert.ok(await auth({vp}, config), 'Good VP failed to match.')
 
     const prevHolder = vp.holder
     vp.holder = CREDS[4].did

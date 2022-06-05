@@ -10,7 +10,7 @@
    - `yarn add ethr-did-resolver@0.2.0 uport-credentials@1.1.7 @veramo/did-jwt@^3.1.0 --dev`
    - `node test.js`
 
-   to package: zip -rq function.zip index.js node_modules
+   to package for AWS Lambda: zip -rq function.zip index.js node_modules
 
 **/
 
@@ -102,15 +102,17 @@ exports.auth = async (input, config) => {
   //console.log('Got claim response:', JSON.stringify(claimResponse, null, 2))
   const claim = claimResponse.claim
   // (alternative approach is to pull org_role_claim record from the server)
-  const start = claim.member.startDate && new Date(claim.member.startDate)
-  const ended = claim.member.endDate && new Date(claim.member.endDate)
+  const start = claim.startDate && new Date(claim.startDate)
+  const ended = claim.endDate && new Date(claim.endDate)
   if (claim['@type'] != 'Organization'
       || claim.name != orgName
+      || !claim.member
       || claim.member['@type'] != 'OrganizationRole'
+      || !claim.member.member
       || claim.member.member.identifier != vp.holder
       || claim.member.roleName != orgRoleName
-      || (claim.member.startDate && new Date() < start)
-      || (claim.member.endDate && ended < new Date())) {
+      || (claim.startDate && new Date() < start)
+      || (claim.endDate && ended < new Date())) {
     // this claim isn't a valid organizational claim
     //console.log('For holder ' + vp.holder + ' this claim did not match criteria:', JSON.stringify(claim, null, 2))
     return false
