@@ -160,7 +160,7 @@ exports.auth = async (input, config) => {
   const confirms = await getJson(confirmUrl)
   //console.log('Got confirmations:', confirms)
   if (confirms.result.indexOf(confirmerDid) == -1) {
-    //console.log('')
+    //console.log('Confirmer authority has not confirmed that claim.')
     return false
   }
 
