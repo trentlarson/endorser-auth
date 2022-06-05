@@ -4,14 +4,14 @@
    This depends on endorser-ch:
    - create data in a local test run
    - copy it to where the server looks for the DB
-   - get the ID for the AgreeAction where 0x6 confirms the claim by 0x3
+   - get the ID for the Organization where 0x3 claims
    - run the server
 
    Some of this is copied in the endorser-ch repo (eg. test/util.js).
 **/
 
 const ENDORSER_SERVER='http://localhost:3000'
-const TEST_CLAIM='01G4N155FNSYCQA8KVYVPTNETM'
+const TEST_CLAIM='01G4S0Z0AE42V7ZVHJ0C82J262'
 
 const auth = require('./index').auth
 const { Credentials } = require('uport-credentials')

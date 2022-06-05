@@ -22,16 +22,16 @@ const checkJwt = (jwt, didJwtLib) => {
   const {payload, header, signature, data} = didJwtLib.decodeJWT(jwt)
   const nowSeconds = Math.floor(new Date().getTime() / 1000)
   if (!payload || !header) {
-    console.log('Unverified JWT')
+    //console.log('Unverified JWT')
     return null
   } else if (payload.exp < nowSeconds) {
-    console.log('JWT has expired.')
+    //console.log('JWT has expired.')
     return null
   } else if (payload.iat < nowSeconds - 60) {
-    console.log('JWT was issued over 60 seconds ago.')
+    //console.log('JWT was issued over 60 seconds ago.')
     return null
   } else if (header.typ === 'none') {
-    console.log('JWT typ is insecure.')
+    //console.log('JWT typ is insecure.')
     return null
   }
   return payload.iss
