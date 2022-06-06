@@ -15,32 +15,6 @@
 **/
 
 /**
-   @return payload from JWT string if it's valid and hasn't expired and is within the last minute; otherwise null
-**/
-const checkJwt = (jwt, didJwtLib) => {
-
-  const {payload, header, signature, data} = didJwtLib.decodeJWT(jwt)
-  const nowSeconds = Math.floor(new Date().getTime() / 1000)
-  if (!payload || !header) {
-    //console.log('Unverified JWT')
-    return null
-  }
-  if (payload.exp < nowSeconds) {
-    //console.log('JWT has expired.')
-    return null
-  }
-  if (payload.nbf > nowSeconds) {
-    //console.log('JWT was issued over 60 seconds ago.')
-    return null
-  }
-  if (header.typ === 'none') {
-    //console.log('JWT typ is insecure.')
-    return null
-  }
-  return payload
-}
-
-/**
    input contains a single 'vp' property containing a Verifiable Presentation
 
    config contains:
@@ -98,16 +72,19 @@ exports.auth = async (input, config) => {
     //console.log('VP JWT check failed.')
     return false
   }
+  // check this value in the signed payload (not any unsigned value)
   if (vcPayload.iss != vp.holder){
     //console.log('VC issuer is different from VP holder.')
     return false
   }
-  // the check after this depends on this check (such that there's either an exp or an iat)
+  // the check after this depends on this one (such that there's either an exp or an iat)
+  // check this value in the signed payload (not in any unsigned source)
   if (! vcPayload.exp && ! vcPayload.iat) {
     //console.log('VP did not have either an expiration (exp) time or issuance (iat) time.')
     return false
   }
   const nowSeconds = Math.floor(new Date().getTime() / 1000)
+  // check this value in the signed payload (not in any unsigned source)
   if (vcPayload.iat < nowSeconds - 60) { // fails check if no iat (which must be OK since there must have been an exp)
     //console.log('JWT was issued over 60 seconds ago.')
     return false
@@ -166,4 +143,32 @@ exports.auth = async (input, config) => {
 
   //console.log('Giving result:', vp.holder)
   return vp.holder
+}
+
+/**
+   @return payload from JWT string if it's valid and hasn't expired and is within the last minute; otherwise null
+**/
+const checkJwt = (jwt, didJwtLib) => {
+
+  const {payload, header, signature, data} = didJwtLib.decodeJWT(jwt)
+  const nowSeconds = Math.floor(new Date().getTime() / 1000)
+  if (!payload || !header) {
+    //console.log('Unverified JWT')
+    return null
+  }
+  // check this value in the signed payload (not in any unsigned source)
+  if (payload.exp < nowSeconds) {
+    //console.log('JWT has expired.')
+    return null
+  }
+  // check this value in the signed payload (not in any unsigned source)
+  if (payload.nbf > nowSeconds) {
+    //console.log('JWT was issued over 60 seconds ago.')
+    return null
+  }
+  if (header.typ === 'none') {
+    //console.log('JWT typ is insecure.')
+    return null
+  }
+  return payload
 }
